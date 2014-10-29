@@ -5,10 +5,13 @@
 
 require 'ffi'
 
-LED_GREEN = [0x65,0x0C,0x01,0xFF]
-LED_RED = [0x65,0x0C,0x02,0xFF]
-LED_YELLOW = [0x65,0x0C,0x04,0xFF]
-LED_OFF = [0x65,0x0C,0x00,0xFF]
+LED_GREEN = 0x01
+LED_RED = 0x02
+LED_YELLOW = 0x04
+LED_OFF = 0x00
+
+LED_ON = 0x0C
+LED_FLASH = 0x14
  
 # This is very minimal, as all we need to be able to do is write to the light
 module HidApi
@@ -25,7 +28,7 @@ module HidApi
   end
 end
  
-color = ARGV[0].chomp.downcase
+ color = ARGV[0].chomp.downcase
 case color
 when "green"
   led_color = LED_GREEN
@@ -45,21 +48,18 @@ product_id = 0xb080.to_i
 serial_number = 0
 device = HidApi.hid_open(vendor_id, product_id, serial_number)
 
-#ARGV[1], if present, should be a number of times to blink
-blinks = ARGV[1]? ARGV[1].to_i : 1
-
-blinks.times do |t|
-  send(led_color)
-
-  sleep(0.5)
-
-  send(LED_OFF)
+if ARGV[1] == "flash"
+  send(LED_FLASH,led_color)
 end
+ 
+send(LED_ON,led_color)
 
 HidApi.hid_close(device)
 
-def send(led_color)
-  command_to_send = HidApi.pad_to_report_size(led_color)
+
+def send(led_task, led_color)
+  # SEND
+  command_to_send = HidApi.pad_to_report_size([0x65,led_task,led_color,0xFF])
   res = HidApi.hid_write device, command_to_send, HidApi::REPORT_SIZE
   raise "command write failed" if res <= 0
 end
