@@ -25,7 +25,7 @@ module HidApi
   end
 end
  
- color = ARGV[0].chomp.downcase
+color = ARGV[0].chomp.downcase
 case color
 when "green"
   led_color = LED_GREEN
@@ -44,10 +44,22 @@ vendor_id = 0x0fc5.to_i
 product_id = 0xb080.to_i
 serial_number = 0
 device = HidApi.hid_open(vendor_id, product_id, serial_number)
- 
-# SEND
-command_to_send = HidApi.pad_to_report_size(led_color)
-res = HidApi.hid_write device, command_to_send, HidApi::REPORT_SIZE
-raise "command write failed" if res <= 0
+
+#ARGV[1], if present, should be a number of times to blink
+blinks = ARGV[1]? ARGV[1].to_i : 1
+
+blinks.times do |t|
+  send(led_color)
+
+  sleep(0.5)
+
+  send(LED_OFF)
+end
 
 HidApi.hid_close(device)
+
+def send(led_color)
+  command_to_send = HidApi.pad_to_report_size(led_color)
+  res = HidApi.hid_write device, command_to_send, HidApi::REPORT_SIZE
+  raise "command write failed" if res <= 0
+end
