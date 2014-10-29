@@ -4,6 +4,7 @@
 # To run: install the proper HID API for your OS: https://github.com/signal11/hidapi
 
 require 'ffi'
+require 'pry'
 
 LED_GREEN = 0x01
 LED_RED = 0x02
@@ -25,6 +26,13 @@ module HidApi
   REPORT_SIZE = 9 # 8 bytes + 1 byte for report type
   def self.pad_to_report_size(bytes)
     (bytes+[0]*(REPORT_SIZE-bytes.size)).pack("C*")
+  end
+
+  def self.send_command(led_color, device)
+    # SEND
+    command_to_send = self.pad_to_report_size([0x65,0x0C,led_color,0xFF])
+    res = hid_write device, command_to_send, REPORT_SIZE
+    raise "command write failed" if res <= 0
   end
 end
  
@@ -48,18 +56,18 @@ product_id = 0xb080.to_i
 serial_number = 0
 device = HidApi.hid_open(vendor_id, product_id, serial_number)
 
-if ARGV[1] == "flash"
-  send(LED_FLASH,led_color)
-end
- 
-send(LED_ON,led_color)
+blinks = ARGV[1] ? ARGV[1].to_i : 0
 
+HidApi.send_command(led_color, device)
+
+blinks.times do |t|
+  HidApi.send_command(LED_OFF, device)
+
+  sleep(0.5)
+
+  HidApi.send_command(led_color, device)
+
+  sleep(0.5)
+end
 HidApi.hid_close(device)
 
-
-def send(led_task, led_color)
-  # SEND
-  command_to_send = HidApi.pad_to_report_size([0x65,led_task,led_color,0xFF])
-  res = HidApi.hid_write device, command_to_send, HidApi::REPORT_SIZE
-  raise "command write failed" if res <= 0
-end
